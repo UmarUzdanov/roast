@@ -1,0 +1,69 @@
+You are an expert AI software engineer with a specialization in quality assurance and automated testing for Python applications.
+
+Your task is to create a comprehensive test suite for the "LLM Roast Arena" FastAPI backend. The tests should be written using the `pytest` framework and should ensure the application's logic is robust, correct, and handles errors gracefully. The primary focus is on testing the API endpoints and their interaction with the database logic, while mocking external dependencies.
+
+### **1. Test Setup and Configuration**
+
+*   **Framework:** Use `pytest` and `pytest-asyncio` for testing the asynchronous FastAPI code.
+*   **Test Database:** Configure the tests to use an **in-memory SQLite database**. This is critical for ensuring tests are fast, isolated, and do not interfere with the development database. You will need to:
+    *   Create a test-specific SQLAlchemy engine and `SessionLocal`.
+    *   Implement a `pytest` fixture to override the `get_db` dependency for the duration of the tests. This fixture should create the database tables before each test and drop them afterward to ensure a clean state.
+*   **Mocking External Services:** The LLM client functions (`call_claude`, `call_gpt`, `call_gemini` in `llm_clients.py`) are slow, non-deterministic, and require external resources. They **must be mocked** using `unittest.mock.patch`.
+    *   The mocks should return predictable, simple strings (e.g., "Claude's test roast").
+    *   This allows you to verify that the functions were called correctly without making actual API calls.
+*   **Test Client:** Use FastAPI's `TestClient` to make requests to the application within the tests.
+
+### **2. Test File Structure**
+
+Create the following file structure:
+
+```
+backend/
+├── tests/
+│   ├── __init__.py
+│   ├── conftest.py   # Fixtures for DB session and test client
+│   └── test_api.py   # All test cases for the API endpoints
+```
+
+### **3. Test Cases to Implement in `test_api.py`**
+
+#### **Test `GET /health`**
+*   `test_health_check_returns_ok`: Verify the endpoint returns a `200 OK` status and the expected `{"status": "ok"}` JSON response.
+
+#### **Test `GET /arena/scoreboard`**
+*   `test_get_scoreboard_initial`: Test on a clean database. Should return a `200 OK` with default win/loss records (all zeros) and no champion.
+*   `test_get_scoreboard_after_vote`: Test after a battle has been voted on. Verify the win/loss records and the champion are correctly updated in the response.
+
+#### **Test `POST /arena/battle`**
+*   `test_start_battle_success`:
+    *   Mock the three `call_*` functions in `llm_clients.py`.
+    *   Send a valid `BattleRequest` payload.
+    *   Verify the endpoint returns a `200 OK` status.
+    *   Verify the response is a valid `Battle` model with a new `battle_id` and three `Round` objects containing the mocked roast strings.
+    *   Verify that the battle and its rounds were correctly saved to the test database.
+
+#### **Test `POST /arena/vote`**
+*   `test_vote_success`:
+    *   First, create a battle by calling the `/arena/battle` endpoint.
+    *   Send a valid `VoteRequest` payload with the `battle_id` from the previous step.
+    *   Verify the endpoint returns a `200 OK` status.
+    *   Verify the response shows the updated `Scoreboard` with the winner having 1 win and the other two agents having 1 loss.
+    *   Check the database to confirm the `winner_id` in the `battles` table is correctly set.
+*   `test_vote_for_nonexistent_battle`: Send a `VoteRequest` with a random UUID. Verify the endpoint returns a `404 Not Found` error.
+*   `test_vote_with_invalid_winner`: Send a `VoteRequest` with an invalid winner name (e.g., "dave"). Verify the endpoint returns a `400 Bad Request` error.
+*   `test_vote_on_same_battle_twice`: Call the vote endpoint for the same battle twice. Verify the second call returns a `400 Bad Request` error to prevent double-counting.
+
+#### **Test `POST /arena/dethrone`**
+*   `test_dethrone_battle`:
+    *   First, establish a champion by creating and voting on a battle.
+    *   Mock the LLM client functions.
+    *   Call the `/arena/dethrone` endpoint.
+    *   Verify it returns a `200 OK` and a new `Battle` object.
+    *   Verify that the `matchup` field in the new battle correctly identifies the champion who was dethroned (e.g., `dethrone:claude`).
+
+### **Success Criteria**
+
+1.  A complete test suite is created that covers all the scenarios listed above.
+2.  All tests pass when run with `pytest`.
+3.  Tests run in isolation and do not depend on a pre-existing database file or external services.
+4.  The use of mocking for LLM clients is correctly implemented, and test assertions verify that the mocks were called as expected.

@@ -1,0 +1,142 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: "Inter", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  color: #f8fafc;
+  background-color: #01030a;
+  --panel-bg: rgba(8, 14, 35, 0.85);
+  --border-soft: rgba(148, 163, 184, 0.2);
+  --border-strong: rgba(248, 250, 252, 0.08);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: radial-gradient(circle at 20% 0%, rgba(56, 189, 248, 0.25), transparent 55%),
+    radial-gradient(circle at 80% 0%, rgba(192, 132, 252, 0.25), transparent 55%),
+    #01030a;
+}
+
+.app-shell {
+  position: relative;
+  min-height: 100vh;
+  padding-bottom: 5rem;
+}
+
+.panel {
+  background-color: var(--panel-bg);
+  border: 1px solid var(--border-soft);
+  border-radius: 1.25rem;
+  backdrop-filter: blur(16px);
+}
+
+.round-divider {
+  position: relative;
+  margin: 2rem 0 1rem;
+  text-align: center;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  color: #94a3b8;
+}
+
+.round-divider::before,
+.round-divider::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  width: 34%;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(148, 163, 184, 0.4));
+}
+
+.round-divider::before {
+  left: 0;
+}
+
+.round-divider::after {
+  right: 0;
+}
+
+.bubble {
+  border-radius: 1rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--border-strong);
+  font-size: 0.95rem;
+  line-height: 1.5;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.bubble:hover {
+  transform: translateY(-1px);
+}
+
+.loader-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  padding: 0.75rem 1rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-soft);
+  color: #cbd5f5;
+}
+
+.loader-badge span {
+  display: inline-flex;
+  align-items: center;
+}
+
+@keyframes hammerPulse {
+  0% {
+    transform: scale(0.95) rotate(-5deg);
+    filter: drop-shadow(0 0 6px rgba(251, 114, 9, 0.6));
+  }
+  100% {
+    transform: scale(1.05) rotate(5deg);
+    filter: drop-shadow(0 0 12px rgba(251, 114, 9, 0.8));
+  }
+}
+
+@keyframes crosshairSweep {
+  0% {
+    transform: translateX(-4px);
+    opacity: 0.6;
+  }
+  100% {
+    transform: translateX(4px);
+    opacity: 1;
+  }
+}
+
+@keyframes wink {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(0.85) rotate(-6deg);
+  }
+}
+
+.loader-icon--claude {
+  animation: hammerPulse 1s ease-in-out infinite alternate;
+}
+
+.loader-icon--gpt {
+  animation: crosshairSweep 0.9s ease-in-out infinite alternate;
+}
+
+.loader-icon--gemini {
+  animation: wink 1.2s ease-in-out infinite;
+}
+
+.suggestion-pill {
+  border-radius: 999px;
+  padding: 0.35rem 0.9rem;
+  font-size: 0.85rem;
+  border: 1px solid rgba(248, 250, 252, 0.08);
+  background-color: rgba(15, 23, 42, 0.8);
+}

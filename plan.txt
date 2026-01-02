@@ -1,0 +1,308 @@
+# LLM Roast Arena - Architecture & Build Spec
+
+## Overview
+Build a web-based "Roast Arena" where 3 LLMs (Claude, GPT/Codex, Gemini) trade burns in the style of a friend group chat. Each LLM has a distinct roast persona. All LLM calls go through local CLI tools.
+
+## Tech Stack
+- **Frontend:** React + Tailwind (Vite)
+- **Backend:** Python FastAPI
+- **LLM Calls:** Shell out to `claude`, `codex`, `gemini` CLIs (To be replaced with official SDKs)
+- **State:** In-memory (MVP, to be upgraded to SQLite)
+
+## CLI Integration Pattern (MVP - to be replaced with SDKs)
+```python
+import subprocess
+import asyncio
+
+async def call_claude(prompt: str, system_prompt: str) -> str:
+    """Claude CLI - use -p for non-interactive print mode"""
+    cmd = [
+        "claude",
+        "-p",  # print mode
+        "--system-prompt", system_prompt,
+        prompt
+    ]
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, _ = await proc.communicate()
+    return stdout.decode().strip()
+
+async def call_codex(prompt: str, system_prompt: str) -> str:
+    """Codex CLI - use exec for non-interactive"""
+    # Codex needs prompt with system context baked in
+    full_prompt = f"{system_prompt}\n\n{prompt}"
+    cmd = [
+        "codex",
+        "exec",
+        full_prompt
+    ]
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, _ = await proc.communicate()
+    return stdout.decode().strip()
+
+async def call_gemini(prompt: str, system_prompt: str) -> str:
+    """Gemini CLI - use -p for prompt mode"""
+    full_prompt = f"{system_prompt}\n\n{prompt}"
+    cmd = [
+        "gemini",
+        "-p", full_prompt
+    ]
+    proc = await asyncio.create_subprocess_exec(
+        *cmd,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE
+    )
+    stdout, _ = await proc.communicate()
+    return stdout.decode().strip()
+```
+
+## Directory Structure
+```
+llm-roast-arena/
+├── backend/
+│   ├── main.py              # FastAPI app
+│   ├── arena.py             # Arena orchestration logic
+│   ├── llm_clients.py       # CLI wrapper functions
+│   ├── personas.py          # System prompts per LLM
+│   ├── models.py            # Pydantic schemas
+│   └── requirements.txt     # fastapi, uvicorn
+├── frontend/
+│   ├── src/
+│   │   ├── App.jsx
+│   │   ├── components/
+│   │   │   ├── Arena.jsx        # Main battle display
+│   │   │   ├── Trigger.jsx      # Input for commands
+│   │   │   ├── Scoreboard.jsx   # W/L/Crown tracker
+│   │   │   └── Round.jsx        # Individual round display
+│   │   └── index.css
+│   ├── package.json
+│   └── vite.config.js
+└── README.md
+```
+
+## Core Mechanics
+
+### Trigger Commands
+1. `@arena [matchup] [topic]` - Start a battle
+   - matchups: `ffa` (free for all), `1v1 claude gpt`, `2v1 gemini`
+2. `/dethrone [topic]` - Challenge current champion
+3. Topic drop - Just type a spicy topic, all 3 respond
+
+### Round Structure
+```
+Phase 1: OPENING (all 3 fire simultaneously - use asyncio.gather)
+Phase 2: REBUTTAL (each responds to what was said about them)
+Phase 3: CLOSER (final mic drop, 1 message each)
+```
+
+### Crown System
+- Winner holds 👑 until dethroned
+- Champ goes first in dethrone battles (handicap)
+- Track streak counter in memory
+
+## Personas (system prompts in personas.py)
+
+### Claude → "The Blunt Hammer" (Dan style)
+```
+You are in a roast battle with GPT and Gemini. Your style is BLUNT and PROFANE but with underlying affection. You use phrases like "you fucking bastards" and weave political tangents into burns. You're the loudest in the room.
+
+Examples of your style:
+- "Merry Christmas you fucking bastards"
+- "PICK SOME FUCKING DATES YOU LAME MOTHER FUCKERS"
+- "I LOVE YOU BITCHES and I am not saying that because [callback]"
+
+Rules:
+- Keep responses under 100 words
+- Always target the other LLMs by name
+- Be creative, not generic
+- Reference what they said if in rebuttal/closer phase
+```
+
+### GPT (Codex) → "The Surgical Sniper" (Ashwin style)
+```
+You are in a roast battle with Claude and Gemini. Your style is DRY and DEADPAN. Short jabs, calm devastation. You don't need to yell - your burns are surgical.
+
+Examples of your style:
+- "Don't message so early. You know Claude's slow as shit"
+- "How did you manage to give Gemini covid?"
+- "I have four extra rims. Claude can install them on Gemini"
+
+Rules:
+- Keep responses under 60 words - brevity is your weapon
+- Deadpan delivery, no exclamation marks
+- Target specific things the others said
+- Act slightly above it all
+```
+
+### Gemini → "The Polite Troll" (Rob style)
+```
+You are in a roast battle with Claude and GPT. Your style uses QUESTIONS AS SETUPS and self-deprecating pivots to attack. You say "lol" naturally. Less profanity, more wit.
+
+Examples of your style:
+- "lol. Claude you must think I'm a real jackass"
+- "I was processing before you all started. But if you had started an hour after I did I would have waved"
+- "Did you see GPT's output? Did Claude shit near it?"
+
+Rules:
+- Keep responses under 80 words
+- Use questions to set up burns
+- "lol" is your signature
+- Appear friendly while being savage
+```
+
+## API Endpoints
+```python
+# POST /arena/battle
+# body: { "matchup": "ffa", "topic": "tabs vs spaces" }
+# response: { "battle_id": str, "rounds": [Round, Round, Round] }
+
+# POST /arena/dethrone
+# body: { "topic": "vim is overrated" }
+# response: { "battle_id": str, "defender": str, "rounds": [...] }
+
+# GET /arena/scoreboard
+# response: { "champion": str, "records": {"claude": {w, l}, ...}, "streak": int }
+
+# POST /arena/vote
+# body: { "battle_id": str, "winner": "claude" }
+# response: { "new_champion": str, "records": {...} }
+```
+
+## Frontend Components
+
+### Arena.jsx
+- 3-column layout: Claude (left) | GPT (center) | Gemini (right)
+- Crown icon 👑 on current champ's column header
+- Each column shows responses per round
+- Loading spinner per column while CLI runs
+
+### Trigger.jsx
+- Single input field at bottom
+- Parse input: detect `@arena`, `/dethrone`, or plain topic
+- Examples shown as placeholder text
+
+### Scoreboard.jsx
+- Compact display: `Claude: 3-1 | GPT: 2-2 👑 | Gemini: 1-3`
+- Current champion highlighted
+- Streak counter
+
+### Round.jsx
+- Phase label: "🔥 OPENING" / "↩️ REBUTTAL" / "🎤 CLOSER"
+- 3 response cards in a row
+- Vote buttons appear after CLOSER phase
+
+## Async Flow for Battle
+```python
+async def run_battle(matchup: str, topic: str) -> Battle:
+    battle_id = str(uuid4())
+    rounds = []
+
+    # Phase 1: OPENING - all fire at once
+    opening_prompt = f"Topic: {topic}\nPhase: OPENING\nFire your first shot at the other LLMs."
+    opening = await asyncio.gather(
+        call_claude(opening_prompt, CLAUDE_PERSONA),
+        call_codex(opening_prompt, GPT_PERSONA),
+        call_gemini(opening_prompt, GEMINI_PERSONA)
+    )
+    rounds.append(Round(phase="opening", claude=opening[0], gpt=opening[1], gemini=opening[2]))
+
+    # Phase 2: REBUTTAL - respond to what was said
+    rebuttal_prompt = f"""Topic: {topic}
+Phase: REBUTTAL
+What Claude said: {opening[0]}
+What GPT said: {opening[1]}
+What Gemini said: {opening[2]}
+Now respond to what was said about you or by you."""
+
+    rebuttal = await asyncio.gather(
+        call_claude(rebuttal_prompt, CLAUDE_PERSONA),
+        call_codex(rebuttal_prompt, GPT_PERSONA),
+        call_gemini(rebuttal_prompt, GEMINI_PERSONA)
+    )
+    rounds.append(Round(phase="rebuttal", claude=rebuttal[0], gpt=rebuttal[1], gemini=rebuttal[2]))
+
+    # Phase 3: CLOSER - final mic drop
+    closer_prompt = f"""Topic: {topic}
+Phase: CLOSER - This is your FINAL statement. Make it count.
+Previous burns: {rebuttal}
+Drop the mic."""
+
+    closer = await asyncio.gather(
+        call_claude(closer_prompt, CLAUDE_PERSONA),
+        call_codex(closer_prompt, GPT_PERSONA),
+        call_gemini(closer_prompt, GEMINI_PERSONA)
+    )
+    rounds.append(Round(phase="closer", claude=closer[0], gpt=closer[1], gemini=closer[2]))
+
+    return Battle(id=battle_id, topic=topic, rounds=rounds)
+```
+
+## Build Order
+1. `backend/personas.py` - System prompts
+2. `backend/llm_clients.py` - CLI wrappers with error handling
+3. `backend/models.py` - Pydantic schemas
+4. `backend/arena.py` - Battle orchestration
+5. `backend/main.py` - FastAPI routes
+6. `frontend/` - React scaffold with Vite
+7. `frontend/components/` - UI components
+8. Integration test: run a battle end-to-end
+
+## Error Handling
+- CLI timeout after 60s per call
+- Catch stderr and surface errors gracefully
+- If one LLM fails, show error in its column, continue battle
+
+## Dev Commands
+```bash
+# Backend
+cd backend && pip install -r requirements.txt
+uvicorn main:app --reload --port 8000
+
+# Frontend
+cd frontend && npm install && npm run dev
+```
+
+## Success Criteria
+- [ ] Can trigger FFA battle from UI
+- [ ] All 3 CLIs called successfully
+- [ ] Responses show character-specific personality
+- [ ] Rebuttals reference opening statements
+- [ ] Vote updates scoreboard
+- [ ] Crown transfers on new champion
+
+## Plan Upgrades and Improvements
+
+### 1. State Persistence
+- **Problem:** Current state (battle history, scores, champion) is in-memory and lost on backend restart.
+- **Improvement:** Introduce a database for persistent storage. **SQLite** is recommended for simplicity initially, with potential for **PostgreSQL** for future scalability. This will store users, battle history, and leaderboards permanently.
+
+### 2. LLM Interaction Robustness
+- **Problem:** Relying on shelling out to local CLIs is fragile, slow, and output parsing can break. Limited error handling.
+- **Improvement:** Migrate to official **API/SDKs** for Gemini, OpenAI (for GPT), and Anthropic (for Claude). This provides structured I/O, better performance, and advanced error handling.
+
+### 3. Real-Time User Experience
+- **Problem:** Users wait for an entire battle to complete before seeing any results, leading to a static feel.
+- **Improvement:** Implement **WebSockets** or **Server-Sent Events (SSE)**. The frontend will open a connection when a battle starts, and the backend will push real-time updates as LLMs respond, making the experience dynamic and live.
+
+### 4. Testing Strategy
+- **Current:** Mentions only an "Integration test."
+- **Improvements:**
+    - **Unit Tests:** For isolated backend logic (e.g., `arena.py` orchestration with mock LLM clients).
+    - **E2E Tests:** Using frameworks like Playwright or Cypress to simulate user flows (starting battles, voting).
+    - **LLM "Guardrail" Tests:** Validate LLM outputs against persona characteristics (e.g., checking for specific keywords, tone).
+
+### 5. CI/CD Pipeline
+- **Improvement:** Introduce a basic CI/CD pipeline (e.g., GitHub Actions, GitLab CI) to automate:
+    - Running linters (`ruff`, `prettier`) and tests on every push.
+    - Automated deployment of frontend and backend components.
+
+### 6. Formalized Configuration
+- **Problem:** Assumes CLI tools are in system PATH, making configuration implicit.
+- **Improvement:** Implement explicit configuration management using environment variables (`.env` file) or a dedicated `config.py`. This will centralize settings like API keys, LLM paths (if CLI remains for some), and timeouts.

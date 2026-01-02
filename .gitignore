@@ -1,0 +1,23 @@
+__pycache__/
+*.py[cod]
+*.sqlite
+*.db
+*.db-shm
+*.db-wal
+roast_arena.db
+
+# Python virtual environments
+.venv/
+env/
+venv/
+
+# Node/Vite outputs
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+.vscode/
+
+# OS cruft
+.DS_Store

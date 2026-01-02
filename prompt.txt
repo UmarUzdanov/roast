@@ -1,0 +1,81 @@
+You are an expert AI software engineer specializing in Python and database architecture. Your task is to upgrade the "LLM Roast Arena" backend by replacing the current in-memory state management with a persistent SQLite database using the SQLAlchemy ORM.
+
+You will need to design the database schema, implement the connection and session management, create CRUD (Create, Read, Update, Delete) functions for all models, and integrate this new persistence layer into the existing FastAPI application.
+
+### **1. Database Schema Design (Modify `backend/models.py`)**
+
+Define the SQLAlchemy ORM models. Keep the existing Pydantic schemas for API validation but create new SQLAlchemy models for database interaction.
+
+*   **`Agent` Table:** Stores the records for each LLM.
+    *   `id`: Integer, Primary Key, Autoincrement
+    *   `name`: String, Unique, Not Nullable (e.g., "claude", "gpt", "gemini")
+    *   `wins`: Integer, Not Nullable, Default: 0
+    *   `losses`: Integer, Not Nullable, Default: 0
+
+*   **`Battle` Table:** Stores the history and outcome of each battle.
+    *   `id`: String (UUID), Primary Key
+    *   `topic`: String, Not Nullable
+    *   `matchup`: String, Not Nullable
+    *   `winner_id`: Integer, Foreign Key to `agents.id`, Nullable (until a vote is cast)
+    *   `rounds`: SQLAlchemy relationship to the `Round` model (one-to-many).
+
+*   **`Round` Table:** Stores the roasts for each phase of a battle.
+    *   `id`: Integer, Primary Key, Autoincrement
+    *   `battle_id`: String (UUID), Foreign Key to `battles.id`, Not Nullable
+    *   `phase`: String, Not Nullable (e.g., "opening", "rebuttal", "closer")
+    *   `claude_roast`: Text, Not Nullable
+    *   `gpt_roast`: Text, Not Nullable
+    *   `gemini_roast`: Text, Not Nullable
+    *   `battle`: SQLAlchemy relationship back to the `Battle` model.
+
+### **2. Database Connection and Session Management (Create `backend/database.py`)**
+
+Create a new file to handle the database setup.
+
+*   **`SQLALCHEMY_DATABASE_URL`**: Define the connection string for a local SQLite file (e.g., `sqlite:///./roast_arena.db`).
+*   **`engine`**: Create the SQLAlchemy engine.
+*   **`SessionLocal`**: Create a `sessionmaker` for database sessions.
+*   **`Base`**: Create a `declarative_base()` for the ORM models.
+*   **`get_db` function**: A FastAPI dependency to provide a database session to API endpoints, ensuring the session is always closed after the request.
+*   **`create_db_and_tables` function**: A function to be called on application startup to create the database and all tables.
+
+### **3. CRUD Operations (Create `backend/crud.py`)**
+
+Create a new file to abstract all database interactions. All functions should accept a `db: Session` argument.
+
+*   **Agent Functions:**
+    *   `get_agent_by_name(db: Session, name: str) -> models.Agent | None:`
+    *   `get_all_agents(db: Session) -> list[models.Agent]:`
+    *   `create_agent(db: Session, name: str) -> models.Agent:`
+    *   `update_agent_stats(db: Session, winner_name: str, loser_names: list[str]) -> None:`
+
+*   **Battle Functions:**
+    *   `create_battle(db: Session, battle_id: str, topic: str, matchup: str) -> models.Battle:`
+    *   `get_battle(db: Session, battle_id: str) -> models.Battle | None:`
+    *   `set_battle_winner(db: Session, battle_id: str, winner_name: str) -> models.Battle:`
+
+*   **Round Functions:**
+    *   `create_round(db: Session, battle_id: str, phase: str, roasts: dict) -> models.Round:`
+
+### **4. Integration with FastAPI Application**
+
+Refactor the existing application to use the new database layer.
+
+*   **Modify `backend/main.py`:**
+    *   Add a startup event handler that calls `database.create_db_and_tables()` and also pre-populates the `agents` table with "claude", "gpt", and "gemini" if they don't exist.
+    *   Inject the `get_db` dependency into all API endpoints.
+    *   Replace all logic using the old in-memory `ARENA_STATE` with calls to the appropriate functions in `crud.py`.
+
+*   **Modify `backend/arena.py`:**
+    *   Remove the `ArenaState` class and its instance entirely.
+    *   Refactor `run_battle` and other functions to accept `db: Session` as an argument.
+    *   Inside `run_battle`, use `crud.create_battle` and `crud.create_round` to save the results to the database instead of storing them in memory.
+
+*   **Modify `backend/requirements.txt`:**
+    *   Add the `sqlalchemy` library.
+
+### **Measurable Outcomes / Success Criteria**
+
+1.  **Successful Data Persistence:** When the FastAPI server is stopped and restarted, all previously completed battles, scores, and champion statuses are successfully reloaded from the `roast_arena.db` file.
+2.  **Efficient Query Execution:** The API endpoints for getting the scoreboard and battle history should retrieve data efficiently using SQLAlchemy relationships.
+3.  **Robust API Endpoints:** The API must correctly handle database sessions, commit transactions upon success, and gracefully handle potential database errors (e.g., a `battle_id` not found). The application must run without errors after the full migration.
