@@ -12,6 +12,8 @@ const COMMANDS = [
   { value: "/dethrone", summary: "Challenge the current champ" },
 ];
 
+const MAX_CHARS = 256;
+
 function Trigger({ onCommand, pending = false, error }) {
   const [placeholderIndex, setPlaceholderIndex] = useState(0);
   const [command, setCommand] = useState("");
@@ -38,47 +40,65 @@ function Trigger({ onCommand, pending = false, error }) {
     setCommand("");
   };
 
+  const handleCommandClick = (value) => {
+    setCommand((prev) => {
+      const next = `${value} ${prev.replace(value, "").trimStart()}`.slice(0, MAX_CHARS);
+      return next;
+    });
+  };
+
+  const remaining = `${command.length}/${MAX_CHARS}`;
+
   return (
-    <section className="panel fixed bottom-0 left-1/2 w-full max-w-5xl -translate-x-1/2 border border-slate-800/70 bg-slate-950/90 px-5 py-4 shadow-[0_-15px_45px_rgba(2,6,23,0.95)]">
+    <section className="panel fixed bottom-0 left-1/2 w-full max-w-5xl -translate-x-1/2 border border-slate-800/70 bg-slate-950/90 px-5 py-4 shadow-[0_10px_35px_rgba(2,6,23,0.65)]">
       <form onSubmit={onSubmit}>
-        <label className="mb-2 block text-xs uppercase tracking-[0.4em] text-slate-500">
-          Command Center
-        </label>
-        <div className="flex flex-col gap-3 md:flex-row md:items-center">
-          <div className="flex-1">
-            <input
-              value={command}
-              onChange={(event) => setCommand(event.target.value)}
-              className="w-full rounded-2xl border border-slate-800/80 bg-slate-900/80 px-5 py-3 text-base text-slate-100 placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-amber-400"
-              placeholder={EXAMPLES[placeholderIndex]}
-              disabled={pending}
-            />
-            {suggestions.length > 0 && (
-              <div className="mt-2 flex flex-wrap gap-2">
-                {suggestions.map((cmd) => (
-                  <span key={cmd.value} className="suggestion-pill text-slate-300">
-                    <strong className="text-slate-100">{cmd.value}</strong>
-                    <span className="ml-2 text-slate-400">{cmd.summary}</span>
-                  </span>
-                ))}
-              </div>
-            )}
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+          <div>
+            <p className="text-xs uppercase tracking-[0.4em] text-amber-300">Ignite a battle</p>
+            <p className="text-sm text-slate-400">Drop a topic or choose a command.</p>
           </div>
+          <div className="flex flex-wrap gap-2">
+            {COMMANDS.map((cmd) => (
+              <button
+                key={cmd.value}
+                type="button"
+                onClick={() => handleCommandClick(cmd.value)}
+                className="suggestion-pill text-slate-200"
+              >
+                <strong className="text-slate-100">{cmd.value}</strong>
+                <span className="ml-2 text-slate-400">{cmd.summary}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="relative flex flex-1 items-center">
+          <input
+            value={command}
+            onChange={(event) =>
+              setCommand(event.target.value.slice(0, MAX_CHARS))
+            }
+            className="w-full rounded-xl border border-slate-700 bg-slate-800/80 px-5 py-3 pr-36 text-base text-slate-100 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-amber-400"
+            placeholder={EXAMPLES[placeholderIndex]}
+            disabled={pending}
+          />
           <button
             type="submit"
             disabled={!command.trim() || pending}
-            className="w-full rounded-2xl bg-amber-400/90 px-6 py-3 text-base font-semibold text-slate-900 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-slate-700/50 md:w-auto"
+            className="absolute right-2 top-1/2 flex -translate-y-1/2 items-center gap-2 rounded-xl bg-amber-400/90 px-4 py-2 text-sm font-semibold text-slate-900 transition hover:bg-amber-300 disabled:cursor-not-allowed disabled:bg-slate-700/50"
           >
-            {pending ? "Cooking..." : "Roast!"}
+            {pending ? "⏳ Summoning" : "⚡ Roast"}
           </button>
         </div>
-        {error ? (
-          <p className="mt-3 text-xs text-rose-400">{error}</p>
-        ) : (
-          <p className="mt-3 text-xs text-slate-500">
-            Use @arena or /dethrone commands, or just drop a spicy topic.
-          </p>
-        )}
+        <div className="mt-2 flex flex-wrap items-center justify-between text-xs">
+          {error ? (
+            <p className="text-rose-400">{error}</p>
+          ) : suggestions.length > 0 ? (
+            <p className="text-slate-400">Press space to accept a command.</p>
+          ) : (
+            <p className="text-slate-400">Use @arena or /dethrone, or just drop a spicy topic.</p>
+          )}
+          <span className="text-slate-500">{remaining}</span>
+        </div>
       </form>
     </section>
   );
