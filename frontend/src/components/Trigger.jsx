@@ -50,7 +50,7 @@ function Trigger({ onCommand, pending = false, error }) {
   const remaining = `${command.length}/${MAX_CHARS}`;
 
   return (
-    <section className="panel fixed bottom-0 left-1/2 w-full max-w-5xl -translate-x-1/2 border border-slate-800/70 bg-slate-950/90 px-5 py-4 shadow-[0_10px_35px_rgba(2,6,23,0.65)]">
+    <section className="panel sticky bottom-4 w-full border border-slate-800/70 bg-slate-950/90 px-5 py-4 shadow-[0_10px_35px_rgba(2,6,23,0.65)]">
       <form onSubmit={onSubmit}>
         <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
           <div>

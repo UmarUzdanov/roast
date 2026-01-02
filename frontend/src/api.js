@@ -15,7 +15,9 @@ async function request(path, options = {}) {
       const data = await response.json();
       if (data?.detail) message = Array.isArray(data.detail) ? data.detail[0].msg : data.detail;
     } catch (error) {
-      // ignore json errors
+      if (import.meta.env.DEV) {
+        console.warn("Failed to parse error response", error);
+      }
     }
     throw new Error(message);
   }

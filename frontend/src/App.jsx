@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Arena from "./components/Arena.jsx";
 import Scoreboard from "./components/Scoreboard.jsx";
 import Trigger from "./components/Trigger.jsx";
@@ -28,6 +28,7 @@ function App() {
   const [historyError, setHistoryError] = useState(null);
 
   const [activeBattleId, setActiveBattleId] = useState(null);
+  const mountedRef = useRef(true);
 
   const [commandError, setCommandError] = useState(null);
   const [voteState, setVoteState] = useState({ status: "idle" });
@@ -35,6 +36,9 @@ function App() {
   useEffect(() => {
     refreshScoreboard();
     refreshHistory();
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const champion = scoreboard?.champion ?? "gpt";
@@ -45,11 +49,14 @@ function App() {
     setScoreboardLoading(true);
     try {
       const data = await fetchScoreboard();
+      if (!mountedRef.current) return;
       setScoreboard(data);
       setScoreboardError(null);
     } catch (error) {
+      if (!mountedRef.current) return;
       setScoreboardError(error.message);
     } finally {
+      if (!mountedRef.current) return;
       setScoreboardLoading(false);
     }
   }
@@ -58,11 +65,14 @@ function App() {
     setHistoryLoading(true);
     try {
       const data = await fetchBattleHistory();
+      if (!mountedRef.current) return;
       setHistory(data);
       setHistoryError(null);
     } catch (error) {
+      if (!mountedRef.current) return;
       setHistoryError(error.message);
     } finally {
+      if (!mountedRef.current) return;
       setHistoryLoading(false);
     }
   }
@@ -114,13 +124,16 @@ function App() {
     setBattleLoading(true);
     try {
       const result = await action();
+      if (!mountedRef.current) return;
       setBattle(result);
       setActiveBattleId(result.id);
-      refreshHistory();
+      await refreshHistory();
     } catch (error) {
+      if (!mountedRef.current) return;
       setBattle(null);
       setBattleError(error.message);
     } finally {
+      if (!mountedRef.current) return;
       setBattleLoading(false);
     }
   }
@@ -130,10 +143,12 @@ function App() {
     setVoteState({ status: "submitting" });
     try {
       await submitVote(battleId, winner);
+      if (!mountedRef.current) return;
       setVoteState({ status: "success", winner });
       await refreshScoreboard();
-      refreshHistory();
+      await refreshHistory();
     } catch (error) {
+      if (!mountedRef.current) return;
       setVoteState({ status: "error", message: error.message });
     }
   }
@@ -144,11 +159,14 @@ function App() {
     setBattleError(null);
     try {
       const data = await fetchBattleById(id);
+      if (!mountedRef.current) return;
       setBattle(data);
       setActiveBattleId(id);
     } catch (error) {
+      if (!mountedRef.current) return;
       setBattleError(error.message);
     } finally {
+      if (!mountedRef.current) return;
       setBattleLoading(false);
     }
   }
@@ -197,8 +215,8 @@ function App() {
           onVote={handleVote}
           voteState={voteState}
         />
+        <Trigger onCommand={handleCommand} pending={battleLoading} error={commandError} />
       </div>
-      <Trigger onCommand={handleCommand} pending={battleLoading} error={commandError} />
     </div>
   );
 }
