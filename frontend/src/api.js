@@ -48,3 +48,12 @@ export function submitVote(battleId, winner) {
     body: JSON.stringify({ battle_id: battleId, winner }),
   });
 }
+
+export function fetchBattleHistory(limit = 20, offset = 0) {
+  const params = new URLSearchParams({ limit: String(limit), offset: String(offset) });
+  return request(`/arena/battles?${params.toString()}`);
+}
+
+export function fetchBattleById(id) {
+  return request(`/arena/battles/${id}`);
+}

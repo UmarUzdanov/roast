@@ -85,6 +85,16 @@ def set_battle_winner(db: Session, battle_id: str, winner_name: str) -> BattleOR
     return battle
 
 
+def list_battles(db: Session, limit: int = 20, offset: int = 0) -> List[BattleORM]:
+    stmt = (
+        select(BattleORM)
+        .order_by(BattleORM.created_at.desc())
+        .offset(offset)
+        .limit(limit)
+    )
+    return db.execute(stmt).scalars().all()
+
+
 # Round helpers ------------------------------------------------------------------
 
 def create_round(db: Session, battle_id: str, phase: str, roasts: Dict[str, str]) -> RoundORM:

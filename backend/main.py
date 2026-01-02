@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 
@@ -10,7 +10,9 @@ from .arena import run_battle, run_dethrone
 from .constants import PARTICIPANTS
 from .crud import (
     ensure_agents_seeded,
+    get_battle,
     get_scoreboard_snapshot,
+    list_battles,
     set_battle_winner,
     update_agent_stats,
 )
@@ -19,6 +21,7 @@ from .models import (
     AgentRecord,
     Battle,
     BattleRequest,
+    BattleSummary,
     DethroneRequest,
     Scoreboard,
     VoteRequest,
@@ -61,6 +64,51 @@ async def dethrone(payload: DethroneRequest, db: Session = Depends(get_db)) -> B
     """Challenge the current champion."""
 
     return await run_dethrone(db=db, topic=payload.topic)
+
+
+@app.get("/arena/battles", response_model=list[BattleSummary])
+async def list_battles_endpoint(
+    limit: int = Query(20, ge=1, le=100),
+    offset: int = Query(0, ge=0),
+    db: Session = Depends(get_db),
+) -> list[BattleSummary]:
+    rows = list_battles(db, limit=limit, offset=offset)
+    summaries = []
+    for row in rows:
+        summaries.append(
+            BattleSummary(
+                id=row.id,
+                topic=row.topic,
+                matchup=row.matchup,
+                created_at=row.created_at,
+                winner=row.winner.name if row.winner else None,
+            )
+        )
+    return summaries
+
+
+@app.get("/arena/battles/{battle_id}", response_model=Battle)
+async def get_battle_endpoint(battle_id: str, db: Session = Depends(get_db)) -> Battle:
+    row = get_battle(db, battle_id)
+    if row is None:
+        raise HTTPException(status_code=404, detail="battle not found")
+    rounds = [
+        round(
+            phase=round_row.phase,
+            claude=round_row.claude_roast,
+            gpt=round_row.gpt_roast,
+            gemini=round_row.gemini_roast,
+        )
+        for round_row in row.rounds
+    ]
+    return Battle(
+        id=row.id,
+        topic=row.topic,
+        matchup=row.matchup,
+        created_at=row.created_at,
+        winner=row.winner.name if row.winner else None,
+        rounds=rounds,
+    )
 
 
 @app.get("/arena/scoreboard", response_model=Scoreboard)

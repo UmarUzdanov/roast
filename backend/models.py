@@ -70,6 +70,19 @@ class Battle(BaseModel):
     topic: str
     matchup: str
     rounds: List[Round]
+    created_at: Optional[datetime] = None
+    winner: Optional[str] = None
+
+    class Config:
+        from_attributes = True
+
+
+class BattleSummary(BaseModel):
+    id: str
+    topic: str
+    matchup: str
+    created_at: datetime
+    winner: Optional[str] = None
 
     class Config:
         from_attributes = True
