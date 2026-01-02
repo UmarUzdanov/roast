@@ -10,6 +10,8 @@ from sqlalchemy.orm import Session
 
 from .crud import create_battle, create_round, get_current_champion
 from .llm_clients import call_claude, call_codex, call_gemini
+from sqlalchemy.orm import Session
+
 from .models import Battle, Round
 from .personas import CLAUDE_PERSONA, GEMINI_PERSONA, GPT_PERSONA
 
@@ -20,25 +22,31 @@ async def run_battle(
     """Run the three-phase battle sequence and persist it."""
 
     battle_id = str(uuid4())
-    create_battle(db, battle_id=battle_id, topic=topic, matchup=matchup)
-    rounds: List[Round] = []
+    transaction = db.begin()
+    try:
+        create_battle(db, battle_id=battle_id, topic=topic, matchup=matchup)
+        rounds: List[Round] = []
 
-    opening_prompt = _build_opening_prompt(topic, matchup, defender)
-    opening = await _fire_round(opening_prompt)
-    create_round(db, battle_id=battle_id, phase="opening", roasts=opening)
-    rounds.append(Round(phase="opening", **opening))
+        opening_prompt = _build_opening_prompt(topic, matchup, defender)
+        opening = await _fire_round(opening_prompt)
+        create_round(db, battle_id=battle_id, phase="opening", roasts=opening)
+        rounds.append(Round(phase="opening", **opening))
 
-    rebuttal_prompt = _build_rebuttal_prompt(topic, opening)
-    rebuttal = await _fire_round(rebuttal_prompt)
-    create_round(db, battle_id=battle_id, phase="rebuttal", roasts=rebuttal)
-    rounds.append(Round(phase="rebuttal", **rebuttal))
+        rebuttal_prompt = _build_rebuttal_prompt(topic, opening)
+        rebuttal = await _fire_round(rebuttal_prompt)
+        create_round(db, battle_id=battle_id, phase="rebuttal", roasts=rebuttal)
+        rounds.append(Round(phase="rebuttal", **rebuttal))
 
-    closer_prompt = _build_closer_prompt(topic, opening, rebuttal)
-    closer = await _fire_round(closer_prompt)
-    create_round(db, battle_id=battle_id, phase="closer", roasts=closer)
-    rounds.append(Round(phase="closer", **closer))
+        closer_prompt = _build_closer_prompt(topic, opening, rebuttal)
+        closer = await _fire_round(closer_prompt)
+        create_round(db, battle_id=battle_id, phase="closer", roasts=closer)
+        rounds.append(Round(phase="closer", **closer))
 
-    return Battle(id=battle_id, topic=topic, matchup=matchup, rounds=rounds)
+        transaction.commit()
+        return Battle(id=battle_id, topic=topic, matchup=matchup, rounds=rounds)
+    except Exception:
+        transaction.rollback()
+        raise
 
 
 async def run_dethrone(db: Session, topic: str) -> Battle:

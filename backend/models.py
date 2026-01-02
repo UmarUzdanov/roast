@@ -88,12 +88,21 @@ class BattleSummary(BaseModel):
         from_attributes = True
 
 
+SANITIZED_TOPIC_PATTERN = r"^[\w\s\-\.,!?@/:'\"()#]+$"
+
+
 class BattleRequest(BaseModel):
     matchup: str = Field(
         default="ffa",
         description="Matchup descriptor such as 'ffa', '1v1 claude gpt', etc.",
     )
-    topic: str = Field(..., min_length=3, max_length=256)
+    topic: str = Field(
+        ...,
+        min_length=3,
+        max_length=256,
+        pattern=SANITIZED_TOPIC_PATTERN,
+        description="Topic text limited to safe characters",
+    )
 
 
 class DethroneRequest(BaseModel):

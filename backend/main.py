@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
+
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .arena import run_battle, run_dethrone
@@ -28,10 +31,16 @@ from .models import (
     VoteRequest,
 )
 
+allowed_origins = [
+    origin.strip()
+    for origin in (os.getenv("ARENA_ALLOWED_ORIGINS") or "http://localhost:5173,http://127.0.0.1:5173").split(",")
+    if origin.strip()
+]
+
 app = FastAPI(title="LLM Roast Arena")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

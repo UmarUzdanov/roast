@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import Dict, Iterable, List
 
 from sqlalchemy import asc, desc, select
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 
 from .constants import DEFAULT_CHAMPION, PARTICIPANTS
 from .models import AgentORM, BattleORM, RoundORM
@@ -121,11 +121,16 @@ def get_scoreboard_snapshot(db: Session) -> tuple[str | None, int, Dict[str, Dic
 
 
 def _calculate_champion_and_streak(db: Session) -> tuple[str | None, int]:
-    battle_rows = db.execute(
-        select(BattleORM)
-        .where(BattleORM.winner_id.is_not(None))
-        .order_by(desc(BattleORM.id))
-    ).scalars()
+    battle_rows = (
+        db.execute(
+            select(BattleORM)
+            .options(joinedload(BattleORM.winner))
+            .where(BattleORM.winner_id.is_not(None))
+            .order_by(desc(BattleORM.id))
+        )
+        .scalars()
+        .all()
+    )
 
     champion_name = None
     streak = 0
