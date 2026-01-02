@@ -23,6 +23,7 @@ from .models import (
     BattleRequest,
     BattleSummary,
     DethroneRequest,
+    Round,
     Scoreboard,
     VoteRequest,
 )
