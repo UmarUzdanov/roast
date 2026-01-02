@@ -94,7 +94,7 @@ async def get_battle_endpoint(battle_id: str, db: Session = Depends(get_db)) -> 
     if row is None:
         raise HTTPException(status_code=404, detail="battle not found")
     rounds = [
-        round(
+        Round(
             phase=round_row.phase,
             claude=round_row.claude_roast,
             gpt=round_row.gpt_roast,
