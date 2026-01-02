@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import Arena from "./components/Arena.jsx";
 import Scoreboard from "./components/Scoreboard.jsx";
 import Trigger from "./components/Trigger.jsx";
-import HistorySidebar from "./components/HistorySidebar.jsx";
+import BattleTabStrip from "./components/BattleTabStrip.jsx";
 import {
   fetchBattleById,
   fetchBattleHistory,
@@ -26,7 +26,6 @@ function App() {
   const [history, setHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(true);
   const [historyError, setHistoryError] = useState(null);
-  const [historyOpen, setHistoryOpen] = useState(true);
 
   const [activeBattleId, setActiveBattleId] = useState(null);
 
@@ -154,20 +153,15 @@ function App() {
     }
   }
 
+  function handleNewBattle() {
+    setBattle(null);
+    setActiveBattleId(null);
+    setBattleError(null);
+  }
+
   return (
     <div className="app-shell text-slate-100">
-      <div className="mx-auto flex max-w-6xl gap-6 px-4 py-6 pb-32">
-        <div className="hidden lg:block">
-          <HistorySidebar
-            battles={history}
-            loading={historyLoading}
-            error={historyError}
-            onSelect={handleHistorySelect}
-            open={historyOpen}
-            onToggle={() => setHistoryOpen((prev) => !prev)}
-          />
-        </div>
-        <div className="flex flex-1 flex-col gap-6">
+      <div className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-6 pb-32">
         <header className="mt-4 rounded-2xl border border-slate-800/80 bg-slate-950/40 px-6 py-8 text-center shadow-[0_25px_60px_rgba(2,6,23,0.7)]">
           <p className="text-xs uppercase tracking-[0.4em] text-slate-500">LLM Roast Arena</p>
           <h1 className="mt-3 text-4xl font-semibold">Elevated Group Chat</h1>
@@ -175,6 +169,14 @@ function App() {
             Three personas. One arena. Drop a topic and watch the crown move.
           </p>
         </header>
+        <BattleTabStrip
+          battles={history}
+          loading={historyLoading}
+          error={historyError}
+          activeBattleId={activeBattleId}
+          onSelect={handleHistorySelect}
+          onNewBattle={handleNewBattle}
+        />
         <Scoreboard
           champion={champion}
           records={records}
@@ -195,7 +197,6 @@ function App() {
           onVote={handleVote}
           voteState={voteState}
         />
-        </div>
       </div>
       <Trigger onCommand={handleCommand} pending={battleLoading} error={commandError} />
     </div>
