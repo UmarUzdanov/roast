@@ -10,8 +10,6 @@ from sqlalchemy.orm import Session
 
 from .crud import create_battle, create_round, get_current_champion
 from .llm_clients import call_claude, call_codex, call_gemini
-from sqlalchemy.orm import Session
-
 from .models import Battle, Round
 from .personas import CLAUDE_PERSONA, GEMINI_PERSONA, GPT_PERSONA
 

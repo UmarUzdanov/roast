@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Dict, Iterable, List
+from typing import Dict, Iterable, Sequence
 
 from sqlalchemy import asc, desc, select
 from sqlalchemy.orm import Session, joinedload
@@ -14,10 +14,10 @@ from .models import AgentORM, BattleORM, RoundORM
 # Agent helpers -----------------------------------------------------------------
 
 def get_agent_by_name(db: Session, name: str) -> AgentORM | None:
-    return db.execute(select(AgentORM).where(AgentORM.name == name)).scalar_one_or_none()
+    return db.execute(select(AgentORM).where(name == AgentORM.name)).scalar_one_or_none()
 
 
-def get_all_agents(db: Session) -> List[AgentORM]:
+def get_all_agents(db: Session) -> Sequence[AgentORM]:
     return db.execute(select(AgentORM).order_by(asc(AgentORM.name))).scalars().all()
 
 
@@ -67,7 +67,7 @@ def create_battle(db: Session, battle_id: str, topic: str, matchup: str) -> Batt
 
 
 def get_battle(db: Session, battle_id: str) -> BattleORM | None:
-    return db.execute(select(BattleORM).where(BattleORM.id == battle_id)).scalar_one_or_none()
+    return db.execute(select(BattleORM).where(battle_id == BattleORM.id)).scalar_one_or_none()
 
 
 def set_battle_winner(db: Session, battle_id: str, winner_name: str) -> BattleORM:
@@ -85,7 +85,7 @@ def set_battle_winner(db: Session, battle_id: str, winner_name: str) -> BattleOR
     return battle
 
 
-def list_battles(db: Session, limit: int = 20, offset: int = 0) -> List[BattleORM]:
+def list_battles(db: Session, limit: int = 20, offset: int = 0) -> Sequence[BattleORM]:
     stmt = (
         select(BattleORM)
         .order_by(BattleORM.created_at.desc())

@@ -6,7 +6,6 @@ import os
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from .arena import run_battle, run_dethrone
